@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NASA Turbofan RUL - Live WebSocket Telemetry</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-base: #07090e;
+            --bg-card: rgba(18, 24, 38, 0.7);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --border-highlight: rgba(99, 102, 241, 0.3);
+            --text-main: #f1f5f9;
+            --text-muted: #94a3b8;
+            --color-healthy: #10b981;
+            --color-warning: #f59e0b;
+            --color-critical: #ef4444;
+            --accent-primary: #6366f1;
+            --accent-cyan: #06b6d4;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-base);
+            color: var(--text-main);
+            min-height: 100vh;
+            padding: 24px;
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.12) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(6, 182, 212, 0.08) 0px, transparent 50%);
+        }
+
+        .container {
+            max-width: 1300px;
+            margin: 0 auto;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 24px;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 24px;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .brand-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #6366f1, #06b6d4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4);
+        }
+
+        .brand-text h1 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
+
+        .brand-text p {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .connection-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 14px;
+            border-radius: 9999px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            background: rgba(239, 68, 68, 0.1);
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .connection-pill.connected {
+            background: rgba(16, 185, 129, 0.1);
+            color: #34d399;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .pulse-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: currentColor;
+            box-shadow: 0 0 10px currentColor;
+        }
+
+        .control-panel {
+            background: var(--bg-card);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 18px 24px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .controls-group {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .control-item {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .control-item label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+        }
+
+        select, input {
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-family: inherit;
+            outline: none;
+        }
+
+        select:focus, input:focus {
+            border-color: var(--accent-primary);
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 10px 22px;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #4f46e5, #06b6d4);
+            color: white;
+            box-shadow: 0 4px 14px rgba(79, 70, 229, 0.35);
+        }
+
+        .btn-primary:hover {
+            opacity: 0.92;
+            transform: translateY(-1px);
+        }
+
+        .btn-danger {
+            background: rgba(239, 68, 68, 0.15);
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .btn-danger:hover {
+            background: rgba(239, 68, 68, 0.25);
+        }
+
+        .btn-jump {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid var(--border-color);
+            color: var(--text-muted);
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-jump:hover {
+            background: rgba(99, 102, 241, 0.2);
+            color: #ffffff;
+            border-color: var(--accent-primary);
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 380px 1fr;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+
+        @media (max-width: 992px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .glass-card {
+            background: var(--bg-card);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--border-color);
+            border-radius: 18px;
+            padding: 24px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .rul-card {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .card-header-label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 12px;
+        }
+
+        .rul-big-display {
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .rul-number {
+            font-size: 4.8rem;
+            font-weight: 800;
+            line-height: 1;
+            font-family: 'JetBrains Mono', monospace;
+            background: linear-gradient(180deg, #ffffff 40%, #94a3b8 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            transition: all 0.3s ease;
+        }
+
+        .rul-unit {
+            font-size: 0.95rem;
+            color: var(--text-muted);
+            margin-top: 6px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 8px 18px;
+            border-radius: 9999px;
+            font-weight: 700;
+            font-size: 0.85rem;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            margin-top: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .status-healthy {
+            background: rgba(16, 185, 129, 0.15);
+            color: #34d399;
+            border: 1px solid rgba(16, 185, 129, 0.4);
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.2);
+        }
+
+        .status-warning {
+            background: rgba(245, 158, 11, 0.15);
+            color: #fbbf24;
+            border: 1px solid rgba(245, 158, 11, 0.4);
+            box-shadow: 0 0 20px rgba(245, 158, 11, 0.2);
+        }
+
+        .status-critical {
+            background: rgba(239, 68, 68, 0.18);
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.5);
+            box-shadow: 0 0 24px rgba(239, 68, 68, 0.4);
+            animation: pulse-border 1.5s infinite;
+        }
+
+        @keyframes pulse-border {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.85; transform: scale(1.02); }
+        }
+
+        .progress-track {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.06);
+            border-radius: 9999px;
+            overflow: hidden;
+            margin: 16px 0 8px 0;
+        }
+
+        .progress-bar {
+            height: 100%;
+            width: 100%;
+            background: var(--color-healthy);
+            border-radius: 9999px;
+            transition: width 0.3s ease, background-color 0.3s ease;
+        }
+
+        .action-box {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 14px;
+            margin-top: 16px;
+            font-size: 0.85rem;
+            line-height: 1.4;
+        }
+
+        .action-box strong {
+            display: block;
+            color: var(--text-main);
+            margin-bottom: 4px;
+        }
+
+        .meta-strip {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 14px;
+            padding-top: 14px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .sensors-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 14px;
+        }
+
+        .sensor-card {
+            background: rgba(15, 23, 42, 0.7);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 14px 16px;
+            transition: border-color 0.2s ease;
+        }
+
+        .sensor-card:hover {
+            border-color: var(--border-highlight);
+        }
+
+        .sensor-name {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .sensor-val {
+            font-size: 1.35rem;
+            font-weight: 700;
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--text-main);
+            margin: 6px 0 4px 0;
+        }
+
+        .log-section {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 16px 20px;
+        }
+
+        .log-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .log-terminal {
+            background: #040609;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 14px;
+            height: 160px;
+            overflow-y: auto;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: #94a3b8;
+            line-height: 1.6;
+        }
+
+        .log-line {
+            display: flex;
+            gap: 12px;
+        }
+
+        .log-time {
+            color: #64748b;
+        }
+
+        .log-highlight {
+            color: #38bdf8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="brand">
+                <div class="brand-icon">✈</div>
+                <div class="brand-text">
+                    <h1>NASA Turbofan RUL - Live Stream</h1>
+                    <p>Pemantauan Telemetri Real-Time & Prediksi Sisa Umur via WebSocket</p>
+                </div>
+            </div>
+            <div id="connPill" class="connection-pill">
+                <span class="pulse-dot"></span>
+                <span id="connText">Terputus</span>
+            </div>
+        </header>
+
+        <div class="control-panel">
+            <div class="controls-group">
+                <div class="control-item">
+                    <label>ID Mesin</label>
+                    <select id="engineSelect"></select>
+                </div>
+                <div class="control-item">
+                    <label>Kecepatan Stream</label>
+                    <select id="speedSelect">
+                        <option value="0.1">0.1 Detik (Super Cepat)</option>
+                        <option value="0.3">0.3 Detik (Cepat)</option>
+                        <option value="0.5" selected>0.5 Detik (Ideal)</option>
+                        <option value="1.0">1.0 Detik (Real-Time)</option>
+                    </select>
+                </div>
+                <div class="control-item">
+                    <label>Ulang Otomatis</label>
+                    <select id="loopSelect">
+                        <option value="true" selected>Ya (Loop)</option>
+                        <option value="false">Sekali Putar</option>
+                    </select>
+                </div>
+                <div class="control-item">
+                    <label>Mulai Siklus</label>
+                    <input type="number" id="startCycleInput" value="1" min="1" max="350" style="width: 80px;">
+                </div>
+                <div class="control-item">
+                    <label>Lompat Fase Mesin</label>
+                    <div style="display:flex; gap:6px;">
+                        <button type="button" class="btn-jump" onclick="setCycleJump(1)">1 (Sehat)</button>
+                        <button type="button" class="btn-jump" onclick="setCycleJump(120)">120 (Waspada)</button>
+                        <button type="button" class="btn-jump" onclick="setCycleJump(165)">165 (Kritis)</button>
+                    </div>
+                </div>
+            </div>
+            <div class="controls-group">
+                <button id="startBtn" class="btn btn-primary" onclick="toggleStream()">▶ Mulai Stream</button>
+                <button id="stopBtn" class="btn btn-danger" onclick="stopStream()">⏹ Berhenti</button>
+            </div>
+        </div>
+
+        <div class="main-grid">
+            <div class="glass-card rul-card">
+                <div>
+                    <div class="card-header-label">Prediksi Sisa Umur (RUL)</div>
+                    <div class="rul-big-display">
+                        <div id="rulNumber" class="rul-number">--</div>
+                        <div class="rul-unit">Siklus Terbang Tersisa</div>
+                        <div id="statusBadge" class="status-badge status-healthy">SIAP</div>
+                    </div>
+
+                    <div class="progress-track">
+                        <div id="rulProgressBar" class="progress-bar" style="width: 100%;"></div>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:var(--text-muted);">
+                        <span>0 Siklus (Rusak)</span>
+                        <span id="cycleLabel">Siklus: -- / --</span>
+                        <span>125+ (Maksimal)</span>
+                    </div>
+
+                    <div class="action-box">
+                        <strong>Rekomendasi Tindakan:</strong>
+                        <span id="actionText">Pilih ID Mesin dan klik Mulai Stream untuk memantau.</span>
+                    </div>
+                </div>
+
+                <div class="meta-strip">
+                    <span id="modelUsed">Model: XGBoost</span>
+                    <span id="latencyText">Latensi: -- ms</span>
+                </div>
+            </div>
+
+            <div class="glass-card">
+                <div class="card-header-label" style="margin-bottom: 16px;">Telemetri Sensor Terkini</div>
+                <div class="sensors-grid">
+                    <div class="sensor-card">
+                        <div class="sensor-name">LPC Temp (T24)</div>
+                        <div id="s_lpc_temp" class="sensor-val">--</div>
+                        <div style="font-size:0.7rem; color:var(--text-muted);">&deg;R</div>
+                    </div>
+                    <div class="sensor-card">
+                        <div class="sensor-name">HPC Temp (T30)</div>
+                        <div id="s_hpc_temp" class="sensor-val">--</div>
+                        <div style="font-size:0.7rem; color:var(--text-muted);">&deg;R</div>
+                    </div>
+                    <div class="sensor-card">
+                        <div class="sensor-name">LPT Temp (T50)</div>
+                        <div id="s_lpt_temp" class="sensor-val">--</div>
+                        <div style="font-size:0.7rem; color:var(--text-muted);">&deg;R</div>
+                    </div>
+                    <div class="sensor-card">
+                        <div class="sensor-name">HPC Pressure (P30)</div>
+                        <div id="s_hpc_pressure" class="sensor-val">--</div>
+                        <div style="font-size:0.7rem; color:var(--text-muted);">psia</div>
+                    </div>
+                    <div class="sensor-card">
+                        <div class="sensor-name">Core Speed (Nc)</div>
+                        <div id="s_core_speed" class="sensor-val">--</div>
+                        <div style="font-size:0.7rem; color:var(--text-muted);">rpm</div>
+                    </div>
+                    <div class="sensor-card">
+                        <div class="sensor-name">Fuel Flow Ratio</div>
+                        <div id="s_fuel_flow" class="sensor-val">--</div>
+                        <div style="font-size:0.7rem; color:var(--text-muted);">pps/psi</div>
+                    </div>
+                    <div class="sensor-card">
+                        <div class="sensor-name">Bypass Ratio</div>
+                        <div id="s_bypass_ratio" class="sensor-val">--</div>
+                        <div style="font-size:0.7rem; color:var(--text-muted);">ratio</div>
+                    </div>
+                    <div class="sensor-card">
+                        <div class="sensor-name">Bleed Enthalpy</div>
+                        <div id="s_bleed_enthalpy" class="sensor-val">--</div>
+                        <div style="font-size:0.7rem; color:var(--text-muted);">h</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="log-section">
+            <div class="log-header">
+                <span>Aliran Pesan WebSocket (Real-Time Raw Frame Feed)</span>
+                <span id="logCount">0 frame</span>
+            </div>
+            <div id="terminal" class="log-terminal">
+                <div class="log-line">
+                    <span class="log-time">[System]</span>
+                    <span>Menunggu koneksi WebSocket dibuka...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let ws = null;
+        let frameCount = 0;
+
+        async function initEngines() {
+            const select = document.getElementById('engineSelect');
+            try {
+                const res = await fetch('/ws-engines');
+                const engines = await res.json();
+                engines.forEach(id => {
+                    const opt = document.createElement('option');
+                    opt.value = id;
+                    opt.textContent = `Engine ${id}`;
+                    select.appendChild(opt);
+                });
+            } catch (e) {
+                for (let i = 1; i <= 100; i++) {
+                    const opt = document.createElement('option');
+                    opt.value = i;
+                    opt.textContent = `Engine ${i}`;
+                    select.appendChild(opt);
+                }
+            }
+        }
+
+        initEngines();
+
+        function toggleStream() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                stopStream();
+            } else {
+                startStream();
+            }
+        }
+
+        function startStream() {
+            if (ws) {
+                ws.close();
+            }
+
+            const engineId = document.getElementById('engineSelect').value || 1;
+            const interval = document.getElementById('speedSelect').value || 0.5;
+            const loop = document.getElementById('loopSelect').value || true;
+            const startCycle = document.getElementById('startCycleInput').value || 1;
+
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/ws/telemetry/${engineId}?interval=${interval}&loop=${loop}&start_cycle=${startCycle}`;
+
+            addLog('SYSTEM', `Membuka koneksi ke ${wsUrl}...`);
+
+            ws = new WebSocket(wsUrl);
+
+            ws.onopen = () => {
+                document.getElementById('connPill').classList.add('connected');
+                document.getElementById('connText').textContent = `Live: Engine ${engineId}`;
+                document.getElementById('startBtn').textContent = '⏸ Jeda Stream';
+                addLog('WS', `Koneksi aktif! Mengalirkan data siklus mesin ${engineId}...`);
+            };
+
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                if (data.event === 'completed') {
+                    addLog('STATUS', data.message);
+                    stopStream();
+                    return;
+                }
+
+                updateUI(data);
+                addLog('FRAME', `Siklus: ${data.cycle} | RUL: ${data.predicted_rul} | Status: ${data.health_status} | Latensi: ${data.inference_time_ms}ms`);
+            };
+
+            ws.onclose = () => {
+                document.getElementById('connPill').classList.remove('connected');
+                document.getElementById('connText').textContent = 'Terputus';
+                document.getElementById('startBtn').textContent = '▶ Mulai Stream';
+                addLog('WS', 'Koneksi ditutup.');
+            };
+
+            ws.onerror = (err) => {
+                addLog('ERROR', 'Terjadi kesalahan pada WebSocket.');
+            };
+        }
+
+        function stopStream() {
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+            document.getElementById('connPill').classList.remove('connected');
+            document.getElementById('connText').textContent = 'Terputus';
+            document.getElementById('startBtn').textContent = '▶ Mulai Stream';
+        }
+
+        function setCycleJump(cycle) {
+            document.getElementById('startCycleInput').value = cycle;
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                stopStream();
+            }
+            startStream();
+        }
+
+        function updateUI(data) {
+            document.getElementById('rulNumber').textContent = Math.round(data.predicted_rul);
+            document.getElementById('cycleLabel').textContent = `Siklus: ${data.cycle} / ${data.total_cycles}`;
+            document.getElementById('actionText').textContent = data.recommended_action;
+            document.getElementById('latencyText').textContent = `Latensi: ${data.inference_time_ms} ms`;
+            document.getElementById('modelUsed').textContent = `Model: ${data.model_used}`;
+
+            const pct = Math.min(100, Math.max(0, (data.predicted_rul / 125.0) * 100));
+            const bar = document.getElementById('rulProgressBar');
+            bar.style.width = `${pct}%`;
+
+            const badge = document.getElementById('statusBadge');
+            badge.className = 'status-badge';
+            if (data.health_status === 'HEALTHY') {
+                badge.classList.add('status-healthy');
+                badge.textContent = 'SEHAT (NORMAL)';
+                bar.style.backgroundColor = 'var(--color-healthy)';
+            } else if (data.health_status === 'WARNING') {
+                badge.classList.add('status-warning');
+                badge.textContent = 'WASPADA (PERIKSA)';
+                bar.style.backgroundColor = 'var(--color-warning)';
+            } else {
+                badge.classList.add('status-critical');
+                badge.textContent = 'KRITIS (BAHAYA)';
+                bar.style.backgroundColor = 'var(--color-critical)';
+            }
+
+            if (data.sensors) {
+                document.getElementById('s_lpc_temp').textContent = data.sensors.lpc_temp ?? '--';
+                document.getElementById('s_hpc_temp').textContent = data.sensors.hpc_temp ?? '--';
+                document.getElementById('s_lpt_temp').textContent = data.sensors.lpt_temp ?? '--';
+                document.getElementById('s_hpc_pressure').textContent = data.sensors.hpc_pressure ?? '--';
+                document.getElementById('s_core_speed').textContent = data.sensors.core_speed ?? '--';
+                document.getElementById('s_fuel_flow').textContent = data.sensors.fuel_flow ?? '--';
+                document.getElementById('s_bypass_ratio').textContent = data.sensors.bypass_ratio ?? '--';
+                document.getElementById('s_bleed_enthalpy').textContent = data.sensors.bleed_enthalpy ?? '--';
+            }
+        }
+
+        function addLog(type, text) {
+            frameCount++;
+            document.getElementById('logCount').textContent = `${frameCount} pesan`;
+            const terminal = document.getElementById('terminal');
+            const now = new Date().toTimeString().split(' ')[0];
+            const div = document.createElement('div');
+            div.className = 'log-line';
+            div.innerHTML = `<span class="log-time">[${now}]</span><span class="log-highlight">[${type}]</span><span>${text}</span>`;
+            terminal.appendChild(div);
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+    </script>
+</body>
+</html>

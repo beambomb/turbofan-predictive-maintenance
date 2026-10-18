@@ -1,0 +1,1 @@
+from src.serving.services.prediction_service import prediction_service
