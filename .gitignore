@@ -50,7 +50,7 @@ data/raw/*
 !data/raw/.gitkeep
 data/processed/*
 !data/processed/.gitkeep
-*.parquet
+!data/processed/features_fd001.parquet
 *.csv
 *.tsv
 *.txt.gz
@@ -60,12 +60,12 @@ data/processed/*
 # Model checkpoints & artifacts
 /models/*
 !/models/.gitkeep
+!/models/best_rul_model.joblib
+!/models/best_rul_model.onnx
 /artifacts/*
 *.pt
 *.pth
-*.onnx
 *.pkl
-*.joblib
 
 # MLflow local tracking
 mlruns/

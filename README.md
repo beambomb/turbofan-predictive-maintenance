@@ -29,49 +29,59 @@ An end-to-end predictive maintenance (PdM) and remaining useful life (RUL) strea
            │
            ├───────────────────────────────────────────────┐
            ▼                                               ▼
-[ MODEL TOURNAMENT ]                              [ SERVING & STREAMING ]
-  1. XGBoost (Tuned - Champion)                    FastAPI (Layered Architecture)
-  2. LightGBM (Tuned)                              - REST API (/predict-rul)
-  3. PyTorch CNN-BiGRU                             - WebSocket (/ws/telemetry/{id})
-  4. Attention-BiGRU (Asymmetric Loss)             - Live Interactive Web Console
+[ MODEL BENCHMARK ]                               [ SERVING & STREAMING ]
+  Tuned XGBoost Champion                           FastAPI (Layered Architecture)
+  Evaluated on official test set                   - REST API (/predict-rul)
+  (RMSE 13.88 | NASA Score 342.71)                 - WebSocket (/ws/telemetry/{id})
+                                                   - Live Interactive Web Console
 ```
 
 ---
 
-## Model Benchmark Results
+## Benchmark Results
 
-Models were evaluated on hold-out validation engines from the NASA C-MAPSS FD001 sub-dataset using Root Mean Squared Error (RMSE), Mean Absolute Error (MAE), and the asymmetric NASA Scoring Function.
+### Official NASA C-MAPSS FD001 Test Benchmark
+The primary benchmark was evaluated on the official test set (`test_FD001.txt`), comprising 100 aircraft turbofan engines operating for an unknown duration prior to failure. Predictions were generated at the final observed operational cycle of each engine and evaluated against true remaining cycles (`RUL_FD001.txt`) clipped at 125 cycles (matching the training target ceiling).
 
-| Model | RMSE | MAE | Cumulative Validation Score | Final Cycle NASA Score | Status |
-| :--- | :---: | :---: | :---: | :---: | :---: |
-| **XGBoost (Tuned)** | **14.39** | **10.92** | **15,235** | **6.11** | **Champion** |
-| LightGBM (Tuned) | 14.46 | 10.92 | 15,908 | 6.84 | Runner-up |
-| PyTorch CNN-BiGRU | 15.61 | 10.96 | 15,591 | 8.21 | Top Deep Learning |
-| Attention-BiGRU | 17.71 | 12.42 | 24,720 | 14.50 | Asymmetric Loss |
+| Model / Approach | RMSE | MAE | NASA Score | Source |
+| :--- | :---: | :---: | :---: | :--- |
+| **Our Tuned XGBoost (Feature Engineered)** | **13.88** | **10.18** | **342.71** | This Repository |
+| Zheng et al. (2017) LSTM Network | 16.14 | - | 338.00 | Literature |
+| Heimes (2008) Recurrent Neural Network | 15.16 | - | 435.00 | Baseline Benchmark |
+| Babu et al. (2016) 2D Deep CNN | 18.44 | - | 1,286.00 | Literature |
+| Li et al. (2018) Deep Convolutional Network | 12.61 | - | 274.00 | Advanced Sequence SOTA |
 
-### Understanding the NASA Scoring Discrepancy
-The asymmetric NASA scoring function penalizes late predictions (where predicted RUL > true RUL) exponentially more severely than early predictions ($e^{d/10}-1$ vs $e^{-d/13}-1$).
-* **Literature Standard (~200 to 1,000):** Academic benchmarks (e.g., Heimes 2008, Babu et al. 2016) calculate the score strictly on the **single final cutoff window per engine** ($N=100$ predictions in `test_FD001.txt`).
-* **Cumulative Validation Score (15,235):** In our continuous monitoring experiment, the score was accumulated across **all 4,493 time steps** of the 20 validation engines. Summing exponential penalties over thousands of cycles naturally yields a score in the tens of thousands.
-* **Final Cutoff Verification (6.11):** When evaluated strictly at the terminal cycle across the 20 validation engines, the model achieved a score of **6.11** (RMSE 2.83).
+Reproduce this official benchmark locally:
+```bash
+python src/utils/evaluate_official_test.py
+```
+
+### Validation Experiment (Development Tournament)
+During model exploration, 4 architectures were trained on 80 training engines and validated against 20 hold-out training engines from `train_FD001.txt`:
+* **Tuned XGBoost:** RMSE 14.39, MAE 10.92, Cumulative Score 15,235
+* **Tuned LightGBM:** RMSE 14.46, MAE 10.92, Cumulative Score 15,908
+* **PyTorch CNN-BiGRU:** RMSE 15.61, MAE 10.96, Cumulative Score 15,591
+* **Attention-BiGRU (Asymmetric Loss):** RMSE 17.71, MAE 12.42, Cumulative Score 24,720
+
+Note on the cumulative validation score (15,235): in this experiment, the asymmetric exponential penalty function was accumulated across **all 4,493 time steps** of the 20 engines rather than only the final cutoff cycle. When evaluated strictly at the terminal cycle of the training engines (where true RUL has reached 0), the validation score was 6.11 (RMSE 2.83). However, terminal prediction on run-to-failure engines is significantly less challenging than predicting premature cutoffs in the official 100-engine test set.
 
 ---
 
-## Simulated Maintenance Cost Optimization
+## Illustrative Cost Model (Simulated)
 
-To evaluate practical operational utility, maintenance strategies were simulated across the 20 validation engines using baseline commercial aviation figures:
-* **Cost of Unscheduled In-Flight Shutdown / AOG ($C_{\text{breakdown}}$):** \$150,000
-* **Cost of Scheduled Depot Inspection / Overhaul ($C_{\text{inspection}}$):** \$15,000
+To estimate operational trade-offs, maintenance strategies were simulated across the 20 validation engines using baseline commercial aviation figures:
+* **Cost of Unscheduled In-Flight Shutdown / AOG ($C_{\text{breakdown}}$):** \$150,000 (illustrative industry approximation)
+* **Cost of Scheduled Depot Inspection / Overhaul ($C_{\text{inspection}}$):** \$15,000 (illustrative industry approximation)
 
 $$\text{Total Maintenance Cost} = (N_{\text{inspections}} \times C_{\text{inspection}}) + (N_{\text{breakdowns}} \times C_{\text{breakdown}})$$
 
-| Maintenance Policy | Trigger Condition | Total Cost (20 Engines) | Savings vs Reactive |
+| Maintenance Policy | Policy Trigger Condition | Simulated Cost (20 Engines) | Savings vs Reactive |
 | :--- | :--- | :---: | :---: |
-| **Run-to-Failure (Reactive)** | No action until breakdown | \$3,000,000 | Baseline |
+| **Run-to-Failure (Reactive)** | No preventative intervention | \$3,000,000 | Baseline |
 | **Periodic Maintenance** | Fixed inspection every 100 cycles | \$525,000 | \$2,475,000 (82.5%) |
 | **Predictive Maintenance (Model)** | Inspection alert when Predicted RUL ≤ 25 | **\$300,000** | **\$2,700,000 (90.0%)** |
 
-By triggering preventative maintenance alerts when predicted RUL drops to 25 cycles or below, all 20 engines were safely intercepted before catastrophic failure, eliminating unscheduled breakdown penalties while reducing unnecessary early inspections by \$225,000 (42.8% cost reduction) compared to fixed-interval periodic maintenance.
+*Disclaimer: The 90% cost reduction vs reactive failure is illustrative. It relies on the assumptions that every alert receives a timely inspection, zero false-negative failures occur, and inspections fully restore safe operation within the 20 simulated engines.*
 
 ---
 
@@ -118,6 +128,8 @@ This project is a functional engineering prototype designed to validate end-to-e
 │   │   └── main.py
 │   ├── dashboard/
 │   └── utils/
+│       ├── download_data.py
+│       └── evaluate_official_test.py
 ├── tests/
 │   └── test_api.py
 ├── requirements.txt
@@ -131,7 +143,17 @@ This project is a functional engineering prototype designed to validate end-to-e
 ### 1. Environment Setup
 ```bash
 python -m venv .venv
+```
+Activate on Windows:
+```bash
 .venv\Scripts\activate
+```
+Activate on Linux or macOS:
+```bash
+source .venv/bin/activate
+```
+Install project dependencies:
+```bash
 pip install -r requirements.txt
 ```
 
