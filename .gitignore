@@ -1,0 +1,84 @@
+# Byte-compiled / optimized / URL-encoded files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+venv/
+.venv/
+env/
+.env
+ENV/
+env.bak/
+venv.bak/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints
+*/.ipynb_checkpoints/*
+
+# Data files (do not commit raw or processed telemetry datasets)
+data/raw/*
+!data/raw/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+*.parquet
+*.csv
+*.tsv
+*.txt.gz
+*.tar.gz
+*.zip
+
+# Model checkpoints & artifacts
+models/
+artifacts/
+*.pt
+*.pth
+*.onnx
+*.pkl
+*.joblib
+
+# MLflow local tracking
+mlruns/
+.trash/
+
+# Logs
+logs/
+*.log
+
+# Docker volume data
+docker/data/
+docker/volumes/
+postgres_data/
+
+# OS generated files
+.DS_Store
+Thumbs.db

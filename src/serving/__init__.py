@@ -1,0 +1,3 @@
+"""
+FastAPI inference serving module.
+"""
