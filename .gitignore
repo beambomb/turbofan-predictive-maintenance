@@ -58,8 +58,9 @@ data/processed/*
 *.zip
 
 # Model checkpoints & artifacts
-models/
-artifacts/
+/models/*
+!/models/.gitkeep
+/artifacts/*
 *.pt
 *.pth
 *.onnx

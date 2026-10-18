@@ -1,0 +1,18 @@
+version: 2
+
+sources:
+  - name: raw_data
+    database: turbofan_dw
+    schema: public
+    tables:
+      - name: raw_turbofan_telemetry
+        description: "Tabel mentah ingestion streaming dari Kafka"
+        columns:
+          - name: engine_id
+            description: "ID Unit Mesin Pesawat"
+            tests:
+              - not_null
+          - name: cycle
+            description: "Siklus operasional mesin"
+            tests:
+              - not_null

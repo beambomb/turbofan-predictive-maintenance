@@ -1,0 +1,18 @@
+version: 2
+
+models:
+  - name: fct_turbofan_features
+    description: "Feature store siap pakai untuk training model Machine Learning (Tabular & Time-Series)"
+    columns:
+      - name: engine_id
+        description: "ID Unit Mesin"
+        tests:
+          - not_null
+      - name: cycle
+        description: "Siklus operasional mesin"
+        tests:
+          - not_null
+      - name: target_rul
+        description: "Target RUL capped di 125 cycles"
+        tests:
+          - not_null
