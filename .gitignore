@@ -74,6 +74,16 @@ mlruns/
 logs/
 *.log
 
+# dbt generated files
+target/
+dbt_packages/
+.user.yml
+dbt.log
+*/target/
+*/dbt_packages/
+*/.user.yml
+*/dbt.log
+
 # Docker volume data
 docker/data/
 docker/volumes/
